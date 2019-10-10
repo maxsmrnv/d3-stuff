@@ -1,4 +1,4 @@
-const data = [
+const data1 = [
   {
     type: 'symbolCircle',
     data: [[1, 2]],
@@ -7,7 +7,7 @@ const data = [
   },
   {
     type: 'symbolTriangle',
-    data: [[1, 2]],
+    data: [[0, 0], [0, 850], [0, -850], [850, 0], [-850, 0]],
     isDraggable: true,
     isResizable: false
   },
