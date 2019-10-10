@@ -1,0 +1,47 @@
+html,
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+}
+
+.title {
+  font-size: 12px;
+}
+.canvas {
+  overflow: hidden;
+}
+
+#canvasqPWKOg {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.canvas .wrapper.outer > .background {
+  fill: transparent;
+}
+.canvas .wrapper.inner > .background {
+  fill: transparent;
+  cursor: move;
+}
+.canvas .background {
+  fill: transparent;
+  stroke: #333333;
+  cursor: move;
+}
+.canvas .panCanvas {
+  cursor: move;
+}
+
+.canvas .minimap .frame {
+  pointer-events: all;
+}
+.canvas .minimap .frame .background {
+  stroke: #111111;
+  stroke-width: 4px;
+  fill-opacity: 0.1;
+  fill: #000000;
+  fill: url(#minimapGradient_qwpyza);
+  filter: url(#minimapDropShadow_qwpyza);
+  cursor: move;
+}
