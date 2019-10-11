@@ -7,19 +7,21 @@ export class D3Container {
     this.y = null;
     this.transform = null;
     this.update = null;
+    this.container = null;
+    this.zoom_function = null;
   }
   init(selector) {
-    d3.select('svg > *').remove();
+    // d3.select('svg > *').remove();
     const margin = { top: 100, right: 100, bottom: 100, left: 100 };
     const outerWidth = 800;
     const outerHeight = 800;
     const width = outerWidth - margin.left - margin.right;
     const height = outerHeight - margin.top - margin.bottom;
 
-    const container = d3.select(selector);
+    this.container = d3.select(selector);
 
     // Init SVG
-    const svgChart = container
+    const svgChart = this.container
       .append('svg:svg')
       .attr('width', outerWidth)
       .attr('height', outerHeight)
@@ -63,8 +65,6 @@ export class D3Container {
     const gxAxis = svgChart.append('g').call(xAxis);
     const gyAxis = svgChart.append('g').call(yAxis);
 
-    // Initial draw made with no zoom
-    // update(d3.zoomIdentity);
 
     // Update plot on canvas
     this.update = transform => {
@@ -75,43 +75,171 @@ export class D3Container {
       gxAxis.call(xAxis.scale(scaleX));
       gyAxis.call(yAxis.scale(scaleY));
 
+  
       this.scatter
-        .selectAll('.contour')
-        .attr(
-          'transform',
-          `translate(${transform.x},${transform.y})scale(${transform.k})`
-        );
+        .selectAll('circle')
+        .attr('transform', transform);
+
+        this.scatter
+        .selectAll('polygon')
+        .attr('transform', transform);
+
+        this.scatter
+        .selectAll('rect')
+        .attr('transform', transform);
+
+
       this.scatter.selectAll('.points').attr('transform', d => {
         return `translate(
             ${transform.x + this.x(d[0]) * transform.k},
             ${transform.y + this.y(d[1]) * transform.k})`;
       });
+
+      this.scatter.selectAll('.line').attr('transform', transform);
+
     };
 
     // Zoom/Drag handler
-    const zoom_function = d3
+    this.zoom_function = d3
       .zoom()
       .scaleExtent([-100, 100])
       .on('zoom', () => {
         this.update(d3.event.transform);
       });
 
-    container.call(zoom_function);
+    this.container.call(this.zoom_function);
+
   }
 
-  draw = data => {
+
+  reset = () => {
+    this.container.transition().duration(500).call(this.zoom_function.transform, d3.zoomIdentity)
+  }
+
+  drawLine = data => {
+    const line = d3.line().x(d => this.x(d[0])).y(d => this.y(d[1]))
     this.scatter
-      .selectAll('path')
-      .data(data)
+    .append('g')
+    .attr('class', 'lines')
+    .selectAll('path')
+    .data(data.data)
+    .enter()
+    .append('path')
+    .attr('d', d => line(d))
+    .attr('class', 'line')
+    .style("fill", "none")
+    .style("stroke", "brown")
+    .style("stroke-width", 2);
+  }
+
+  drawContour = (data)=> {
+    this.scatter.selectAll('.contour').remove();
+    const drawCircle = ({x,y,r}) => {
+      this.scatter
+      .append('g')
+      .attr('class', 'contour')
+      .append('circle')
+      .attr('cx', this.x(x))
+      .attr('cy', this.y(y))
+      .attr('r', r)
+      .attr('class', 'circle')
+      .style("fill", "none")
+      .style("stroke", "navy")
+      .style("stroke-width", 1);
+    }
+
+    const drawRect = ({x,y,w,h}) => {
+      this.scatter
+      .append('g')
+      .attr('class', 'contour')
+      .append('rect')
+      .attr('x', this.x(x))
+      .attr('y', this.y(y))
+      .attr('width', this.y(w))
+      .attr('height', this.y(h))
+      .attr('class', 'rect')
+      .style("fill", "none")
+      .style("stroke", "navy")
+      .style("stroke-width", 1);
+    }
+
+    const drawPolyContour = ({points}) => {
+      this.scatter
+      .append('g')
+      .attr('class', 'contour')
+      .selectAll("polygon")
+      .data(points)
       .enter()
-      .append('path')
-      .attr('d', d3.symbol().type(d3.symbolCross))
-      .attr('class', 'points')
-      .attr('fill', 'blue')
-      .attr('transform', d => `translate(${this.x(d[0])}, ${this.y(d[1])})`);
+      .append('polygon')
+      .attr("points",d => d.map(d => [this.x(d[0]),this.y(d[1])].join(",")).join(" "))
+      .style("fill", "none")
+      .style("stroke", "navy")
+      .style("stroke-width", 1);
+    }
+
+    switch(data.type){
+      case 'rectContour': 
+        drawRect(data)
+        break;
+      case 'circleContour': 
+        drawCircle(data)
+        break;
+      case 'polyContour': 
+      drawPolyContour(data)
+        break;
+      default:
+        console.log('undefined contour type');
+    }
+
+    if (this.transform) {
+      this.update(this.transform);
+    }
+
+  }
+
+  drawPolyLayers = data => {
+    this.scatter
+    .append('g')
+    .attr('class', 'layers')
+    .selectAll("polygon")
+    .data(data)
+    .enter()
+    .append('polygon')
+    .attr("points",d => d.map(d => [this.x(d[0]),this.y(d[1])].join(",")).join(" "))
+    .style("fill", "green")
+    .style("opacity", 0.2)
+  }
+
+  drawSymbols = data => {
+    // this.scatter.selectAll('.symbols').remove();
+    const rules = {
+      symbolTriangle: {
+        render: d3.symbolTriangle,
+        color: 'blue'
+      },
+      symbolCircle: {
+        render: d3.symbolCircle,
+        color:'red'
+      },
+    }
+
+    data.forEach(d => {
+      this.scatter
+      .append('g')
+      .attr('class', 'symbols')
+      .selectAll('path')
+      .data(d.data)
+        .enter()
+        .append('path')
+        .attr('d', d3.symbol().type(rules[d.type].render))
+        .attr('class', 'points')
+        .attr('fill', rules[d.type].color)
+        .attr('transform', d => `translate(${this.x(d[0])}, ${this.y(d[1])})`);
+    });
 
     if (this.transform) {
       this.update(this.transform);
     }
   };
+
 }
